@@ -1,0 +1,16 @@
+{
+  "name": "katsustore-api-bot-onedeploy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/kv": "^3.0.0",
+    "imapflow": "^1.0.174",
+    "mailparser": "^3.7.2",
+    "nodemailer": "^6.9.15"
+  }
+}
