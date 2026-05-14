@@ -14,7 +14,7 @@ Ini versi gabungan: **API + Telegram Bot** dalam 1 project Vercel.
   - 📊 Stats
 - API endpoint tetap bisa dipakai dari website/panel/reseller.
 - Multi Gmail fallback.
-- Auto check reply via Vercel Cron tiap 1 menit.
+- Auto check reply via external cron gratis, misalnya cron-job.org tiap 1 menit.
 - Reply WhatsApp dikirim ke Telegram sebagai pesan + file `.txt`.
 - Nomor global/E.164: `+1`, `+81`, `+65`, `+62`, `+237`, dll.
 - Data sender/job/stats disimpan di Vercel KV.
@@ -71,7 +71,17 @@ Kalau `ALLOWED_TELEGRAM_USER_IDS` kosong, semua user bisa pakai bot, tapi hanya 
 
 Setelah env masuk, redeploy.
 
-### 6. Set webhook Telegram
+### 6. Test API
+
+Buka:
+
+```txt
+https://DOMAIN-VERCEL/api/health
+```
+
+Kalau sukses akan muncul JSON `ok: true`.
+
+### 7. Set webhook Telegram
 
 Panggil:
 
@@ -201,3 +211,38 @@ SMTP_MODE=465
 lalu redeploy.
 
 Kalau masih timeout, kemungkinan VPS/serverless outbound SMTP sedang dibatasi, atau Gmail/App Password belum valid.
+
+
+---
+
+## Catatan Versi Fixed
+
+Versi fixed ini:
+- file project sudah flat di root ZIP
+- `vercel.json` dihapus agar tidak kena limit Vercel Hobby Cron
+- endpoint `/api/health` ditambahkan
+- halaman `/` ditambahkan agar domain utama tidak 404
+
+## Auto check reply gratis
+
+Karena Vercel Hobby tidak bisa cron setiap menit, gunakan cron-job.org.
+
+Create cron:
+
+```txt
+URL: https://DOMAIN-VERCEL/api/check-replies
+Method: GET
+Header:
+X-API-Key: API_KEY_KAMU
+Interval: Every 1 minute
+```
+
+## Endpoint penting
+
+```txt
+https://DOMAIN-VERCEL/
+https://DOMAIN-VERCEL/api
+https://DOMAIN-VERCEL/api/health
+https://DOMAIN-VERCEL/api/setup-webhook
+https://DOMAIN-VERCEL/api/telegram-webhook
+```
