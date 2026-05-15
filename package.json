@@ -1,0 +1,15 @@
+{
+  "name": "katsustore-final-full-rebuild",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "imapflow": "^1.0.174",
+    "mailparser": "^3.7.2",
+    "nodemailer": "^6.9.15",
+    "redis": "^4.7.0"
+  }
+}
