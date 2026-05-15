@@ -88,3 +88,15 @@ Interval: 1-15 menit
 ## Catatan
 
 Vercel Hobby tidak mendukung cron tiap menit dari `vercel.json`, jadi file `vercel.json` sengaja tidak dipakai.
+
+
+## ProcessFix
+
+Fix bug runtime Vercel:
+
+`TypeError: Cannot read properties of undefined (reading 'TELEGRAM_WEBHOOK_SECRET')`
+
+Penyebab:
+- Ada function lokal bernama `process(...)`
+- Nama itu menimpa global `process.env`
+- Sudah diganti menjadi `processFlow(...)`

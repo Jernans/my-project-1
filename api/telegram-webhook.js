@@ -29,7 +29,7 @@ async function askDel(chat,id) {
   await setState(chat,{step:'del',senders:l.senders});
   return reply(chat,'🗑️ Kirim index Gmail yang mau dihapus:\n\n'+l.senders.map((s,i)=>`${i+1}. ${escapeHtml(s.email)}`).join('\n'),id);
 }
-async function process(chat,id,from,text) {
+async function processFlow(chat,id,from,text) {
   const s = await getState(chat);
   if(!s) return false;
   if(/^batal|❌ batal$/i.test(text)) { await clearState(chat); await reply(chat,'✅ Dibatalkan.',id); return true; }
@@ -98,10 +98,10 @@ export default async function handler(req,res) {
   if(!text) return json(res,200,{ok:true});
 
   try {
-    if(await process(chat,id,m.from,text)) return json(res,200,{ok:true});
+    if(await processFlow(chat,id,m.from,text)) return json(res,200,{ok:true});
     if(text==='/start') { await clearState(chat); await reply(chat,'🐾 <b>KatsuStore API Bot</b>\n\nKlik tombol di bawah.',id); }
     else if(text==='🔧 Fix WhatsApp' || text==='/fix') await askFix(chat,id);
-    else if(/^\/fix\s+/.test(text)) { await setState(chat,{step:'phone'}); await process(chat,id,m.from,text.replace(/^\/fix\s+/,'')); }
+    else if(/^\/fix\s+/.test(text)) { await setState(chat,{step:'phone'}); await processFlow(chat,id,m.from,text.replace(/^\/fix\s+/,'')); }
     else if(text==='➕ Tambah Gmail' || text==='/addemail') await askEmail(chat,id);
     else if(text==='🗑️ Hapus Gmail' || text==='/delemail') await askDel(chat,id);
     else if(text==='📧 List Gmail' || text==='/listemail') {
