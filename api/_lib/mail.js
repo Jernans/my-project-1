@@ -27,9 +27,9 @@ export function transporter(sender) {
   });
 }
 
-export async function sendMail({ sender, to, subject, text }) {
+export async function sendMail({ sender, to, subject, text, attachments = [] }) {
   const t = transporter(sender);
-  const info = await t.sendMail({ from: sender.email, to, subject, text });
+  const info = await t.sendMail({ from: sender.email, to, subject, text, attachments });
   if (sender.id) await updateSender(sender.id, { lastUsedAt: new Date().toISOString(), lastError: null });
   return info;
 }

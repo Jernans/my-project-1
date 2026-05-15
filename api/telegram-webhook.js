@@ -1,5 +1,5 @@
 import { json, method, body, escapeHtml, maskEmail } from './_lib/http.js';
-import { sendMsg } from './_lib/telegram.js';
+import { sendMsg, getTelegramFile } from './_lib/telegram.js';
 import { normalizePhone, validPhone } from './_lib/phone.js';
 import { createFix } from './fix.js';
 import { addSenderAction } from './senders/add.js';
@@ -20,7 +20,17 @@ function keyboard(id) {
   return { keyboard: [[{text:'🔧 Fix WhatsApp'}], [{text:'❌ Batal'}, {text:'ℹ️ Bantuan'}]], resize_keyboard: true };
 }
 async function reply(chat, text, id) { return sendMsg(chat, text, { reply_markup: keyboard(id) }); }
-async function askFix(chat,id) { await setState(chat,{step:'phone'}); return reply(chat,'🔧 <b>Fix WhatsApp</b>\n\nKirim nomor global, contoh:\n<code>+237620643413</code>\n<code>+6281234567890</code>',id); }
+async function askFix(chat,id) {
+  await setState(chat,{step:'phone'});
+  return reply(chat, `🔧 <b>Fix WhatsApp</b>
+
+Kirim nomor global saja.
+Contoh:
+<code>+218930570429</code>
+<code>+6281226082249</code>
+
+Bot akan otomatis memakai Support Info base dan logs.zip default.`, id);
+}
 async function askEmail(chat,id) { if(!admin(id)) return reply(chat,'❌ Khusus admin.',id); await setState(chat,{step:'email'}); return reply(chat,'➕ Kirim alamat Gmail.',id); }
 async function askDel(chat,id) {
   if(!admin(id)) return reply(chat,'❌ Khusus admin.',id);
@@ -29,6 +39,25 @@ async function askDel(chat,id) {
   await setState(chat,{step:'del',senders:l.senders});
   return reply(chat,'🗑️ Kirim index Gmail yang mau dihapus:\n\n'+l.senders.map((s,i)=>`${i+1}. ${escapeHtml(s.email)}`).join('\n'),id);
 }
+
+function attachmentSummary(files = []) {
+  if (!files.length) return 'Belum ada attachment.';
+  return files.map((f,i)=>`${i+1}. ${escapeHtml(f.filename)} (${Math.ceil((f.contentBase64?.length || 0) * 0.75 / 1024)} KB)`).join('\n');
+}
+
+function toMailerAttachments(files = []) {
+  return files.map(f => ({
+    filename: f.filename,
+    content: Buffer.from(f.contentBase64, 'base64'),
+    contentType: f.contentType || undefined
+  }));
+}
+
+function supportInfoFromState(s, phone) {
+  if (s.supportInfo && s.supportInfo.includes('--Support Info--')) return s.supportInfo;
+  return '';
+}
+
 async function processFlow(chat,id,from,text) {
   const s = await getState(chat);
   if(!s) return false;
@@ -36,18 +65,38 @@ async function processFlow(chat,id,from,text) {
 
   if(s.step==='phone') {
     await clearState(chat);
+
     const phone = normalizePhone(text);
-    if(!validPhone(phone)) { await reply(chat,'❌ Format salah. Contoh: <code>+6281234567890</code>',id); return true; }
+    if(!validPhone(phone)) {
+      await reply(chat,'❌ Format salah. Contoh: <code>+218930570429</code>',id);
+      return true;
+    }
+
     if(!admin(id)) {
       const lim = await checkLimit(id, Number(process.env.NON_ADMIN_RESET_MS || 3600000));
-      if(!lim.ok) { await reply(chat,`⏳ Limit. Coba lagi dalam ${fmt(lim.left)}.`,id); return true; }
+      if(!lim.ok) {
+        await reply(chat,`⏳ Limit. Coba lagi dalam ${fmt(lim.left)}.`,id);
+        return true;
+      }
     }
-    await reply(chat,'⏳ Mengirim request...',id);
+
+    await reply(chat,'⏳ Mengirim request dengan Support Info dan logs.zip default...',id);
+
     try {
-      const r = await createFix({ number: phone, telegramChatId: chat, telegramUserId: id, username: from.username });
+      const r = await createFix({
+        number: phone,
+        telegramChatId: chat,
+        telegramUserId: id,
+        username: from.username
+      });
+
       if(!admin(id)) await markUse(id);
-      await reply(chat,`✅ <b>Request terkirim</b>\n\nFix ID: <code>${escapeHtml(r.fixId)}</code>\nNomor: <code>${escapeHtml(phone)}</code>\nSender: <code>${escapeHtml(r.senderEmailMasked)}</code>`,id);
-    } catch(e) { await reply(chat,`❌ Gagal:\n${escapeHtml(e.message)}`,id); }
+
+      await reply(chat,`✅ <b>Request terkirim</b>\n\nSubject: <code>Question about WhatsApp for Android</code>\nFix ID: <code>${escapeHtml(r.fixId)}</code>\nNomor: <code>${escapeHtml(phone)}</code>\nSender: <code>${escapeHtml(r.senderEmailMasked)}</code>\nAttachment: default logs.zip`,id);
+    } catch(e) {
+      await reply(chat,`❌ Gagal:\n${escapeHtml(e.message)}`,id);
+    }
+
     return true;
   }
 
@@ -116,7 +165,7 @@ export default async function handler(req,res) {
       if(!admin(id)) await reply(chat,'❌ Khusus admin.',id);
       else { const s=await statsAction(); await reply(chat,`📊 Sent: ${s.stats.sent||0}\nFailed: ${s.stats.failed||0}\nReplied: ${s.stats.replied||0}\nPending: ${s.pendingCount}`,id); }
     }
-    else if(text==='ℹ️ Bantuan' || text==='/help') await reply(chat,'Tekan tombol 🔧 Fix WhatsApp lalu kirim nomor global.',id);
+    else if(text==='ℹ️ Bantuan' || text==='/help') await reply(chat,'Tekan tombol 🔧 Fix WhatsApp lalu kirim nomor. Support Info dan logs.zip sudah otomatis dari bot.',id);
     else if(text==='❌ Batal') { await clearState(chat); await reply(chat,'✅ Tidak ada proses aktif.',id); }
     else await reply(chat,'Pakai tombol di bawah ya.',id);
   } catch(e) {

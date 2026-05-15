@@ -1,9 +1,25 @@
+import fs from 'fs';
+import path from 'path';
 import { json, method, auth, body, maskEmail } from './_lib/http.js';
 import { normalizePhone, validPhone } from './_lib/phone.js';
 import { subject, message } from './_lib/template.js';
 import { fallbackSenders, updateSender } from './_lib/senders.js';
 import { sendMail } from './_lib/mail.js';
 import { fixId, saveJob, stat } from './_lib/jobs.js';
+
+
+function defaultAttachments() {
+  const out = [];
+  const logsPath = path.join(process.cwd(), 'assets', 'logs.zip');
+  if (fs.existsSync(logsPath)) {
+    out.push({
+      filename: 'logs.zip',
+      content: fs.readFileSync(logsPath),
+      contentType: 'application/zip'
+    });
+  }
+  return out;
+}
 
 export async function createFix(input) {
   const phone = normalizePhone(input.number || input.phone || input.nomor);
@@ -14,7 +30,14 @@ export async function createFix(input) {
 
   const to = input.to || process.env.WHATSAPP_SUPPORT_EMAIL || 'support@support.whatsapp.com';
   const subj = input.subject || subject(phone);
-  const text = input.text || input.body || message(phone);
+  const text = input.text || input.body || message(phone, {
+    rawSupportInfo: input.supportInfo || input.support_info || '',
+    appVersion: input.appVersion || input.app_version || '',
+    androidVersion: input.androidVersion || input.android_version || '',
+    deviceModel: input.deviceModel || input.device_model || '',
+    appId: input.appId || input.app_id || ''
+  });
+  const attachments = Array.isArray(input.attachments) && input.attachments.length ? input.attachments : defaultAttachments();
   const id = fixId();
   const senders = await fallbackSenders(input.senderId || input.sender_id);
 
@@ -22,7 +45,7 @@ export async function createFix(input) {
   for (let i=0; i<senders.length; i++) {
     const s = senders[i];
     try {
-      const info = await sendMail({ sender: s, to, subject: subj, text });
+      const info = await sendMail({ sender: s, to, subject: subj, text, attachments });
       const job = await saveJob({
         fixId: id,
         phone,
